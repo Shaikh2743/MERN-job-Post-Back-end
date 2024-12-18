@@ -1,52 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const Job = require('../models/Job'); // Assuming 'Job' is the correct model
-const authMiddleware = require('../middleware/authMiddleware'); // Middleware for authentication
+const Job = require('../models/Job'); // Assuming this is the Job model
 
-// Create a Job Post (Protected Route)
-router.post('/add-job', authMiddleware, async (req, res) => {
-  const { jobTitle, positions, companyName, email, phoneNumber, jobDescription } = req.body;
+// Add Job Route
+router.post('/add-job', async (req, res) => {
+  const {
+    jobPost,
+    positions,
+    companyName,
+    email,
+    phoneNumber,
+    jobDescription,
+    postedBy, // This should ideally come from the token
+  } = req.body;
+
+  if (!jobPost || !positions || !companyName || !email || !phoneNumber || !jobDescription) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
 
   try {
-    // Create a new job post
     const newJob = new Job({
-      jobTitle,
+      jobPost,
       positions,
       companyName,
       email,
       phoneNumber,
       jobDescription,
-      postedBy: req.user.id, // Assuming the middleware adds `req.user`
+      postedBy,
     });
 
-    // Save to database
-    await newJob.save();
-    res.status(201).json({ message: 'Job post created successfully', job: newJob });
+    const savedJob = await newJob.save();
+    res.status(201).json({ message: 'Job post created successfully', job: savedJob });
   } catch (error) {
     console.error('Error creating job post:', error);
-    res.status(500).json({ message: 'Failed to create job post' });
-  }
-});
-
-// Get All Job Posts
-router.get('/', async (req, res) => {
-  try {
-    const jobPosts = await Job.find().populate('postedBy', 'username'); // Populate user details
-    res.status(200).json(jobPosts);
-  } catch (error) {
-    console.error('Error fetching job posts:', error);
-    res.status(500).json({ message: 'Failed to fetch job posts' });
-  }
-});
-
-// Get Job Posts by Logged-in User (Protected Route)
-router.get('/my-jobs', authMiddleware, async (req, res) => {
-  try {
-    const userJobs = await Job.find({ postedBy: req.user.id }); // Fetch jobs posted by the logged-in user
-    res.status(200).json(userJobs);
-  } catch (error) {
-    console.error('Error fetching user job posts:', error);
-    res.status(500).json({ message: 'Failed to fetch your job posts' });
+    res.status(500).json({ message: 'Failed to create job post', error });
   }
 });
 
